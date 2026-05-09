@@ -1,192 +1,131 @@
 # OCR-Video-StreamApp
 
-A real-time video OCR application built with **Qt 6.5.3**, **OpenCV 4.8**, and **Tesseract 5**.  
-It captures live camera frames, applies one of four monochrome color styles, and recognizes text using OCR when the user presses **F4**.
+OCR-Video-StreamApp is a real-time camera text recognition application built with Qt, OpenCV, and Tesseract.
 
----
+The app opens your camera, shows a live monochrome preview using one of four color styles, and runs OCR on the current frame when you press F4 or click Capture.
 
-## Interview Requirements — ALL MET ?
+## What the Application Does
 
-| # | Requirement | Status |
-|---|-------------|--------|
-| 1 | Webcam / internal camera input | ? |
-| 2 | Convert each frame to image | ? |
-| 3 | Convert image to monochrome | ? |
-| 4 | Four exact color sets | ? |
-| 5 | Convert monochrome back to video frame and render | ? |
-| 6 | F4 shortcut to capture | ? |
-| 7 | OCR on captured frame | ? |
-| 8 | Separate OCR result dialog | ? |
+1. Starts the default camera.
+2. Receives live frames continuously.
+3. Converts each frame to grayscale and applies the selected monochrome color mapping.
+4. Renders the processed frame back to the UI as live preview.
+5. On capture, takes the latest frame and saves a screenshot.
+6. Extracts the center region of interest (ROI) for OCR.
+7. Applies OCR preprocessing (denoise + adaptive threshold + optional inversion).
+8. Runs Tesseract OCR on the processed image.
+9. Displays recognized text in a result dialog.
 
----
+## Color Modes
 
-## Four Color Sets (Exact Names Required)
+The app supports exactly four color sets:
 
-| Name | Background | Foreground |
-|------|-----------|------------|
-| `Colors_first`  | `#ffffff` white  | `#000000` black  |
-| `Colors_Second` | `#000000` black  | `#ffffff` white  |
-| `Colors_Third`  | `#000000` black  | `#11c70e` green  |
-| `Colors_Fourth` | `#000000` black  | `#f4d81e` yellow |
+1. Colors_first: white background + black foreground
+2. Colors_Second: black background + white foreground
+3. Colors_Third: black background + green foreground
+4. Colors_Fourth: black background + yellow foreground
 
----
+## Technology Stack
 
-## Tech Stack
+- Qt 6.5.3 (QML UI, Camera, VideoSink, QtConcurrent)
+- OpenCV 4.8 (image conversion and preprocessing)
+- Tesseract 5 (OCR engine)
+- C++17
+- CMake
 
-- **Qt 6.5.3** — QML UI, Camera, VideoSink, QtConcurrent (background threads)
-- **OpenCV 4.8** — Image format conversion, grayscale, bilateral filter, adaptive threshold
-- **Tesseract 5** — OCR engine with `eng.traineddata` language model
-- **CMake 3.16+** — Build system with vcpkg dependency management
-- **C++17** — Core language standard
+## Project Structure
 
----
+- main.cpp: Application entry point, QML engine setup, VideoProcessor type registration
+- videoprocessor.h: VideoProcessor class interface (properties, slots, signals)
+- videoprocessor.cpp: Core video processing and OCR implementation
+- qml/Main.qml: Main window, camera preview, capture controls, shortcut handling
+- qml/ColorDialog.qml: Color selection dialog
+- qml/ResultDialog.qml: OCR result display dialog
+- CMakeLists.txt: Build configuration and dependency linking
 
-## Project File Structure
+## Runtime Flow
 
-```
-OCR-Video-StreamApp/
-+-- main.cpp                 ? App entry point, registers C++ class for QML
-+-- videoprocessor.h         ? Class declaration, signals, properties
-+-- videoprocessor.cpp       ? All video + OCR processing logic (9 functions)
-+-- CMakeLists.txt           ? Build config: Qt, OpenCV, Tesseract
-+-- qml/
-¦   +-- Main.qml             ? Main window: camera preview, buttons, F4 shortcut
-¦   +-- ColorDialog.qml      ? Dialog: choose 1 of 4 color sets
-¦   +-- ResultDialog.qml     ? Dialog: display OCR result text
-+-- dependencies/
-    +-- opencv/              ? OpenCV 4.8 (local build)
-    +-- tessdata/            ? eng.traineddata (Tesseract language model)
-    +-- vcpkg/               ? Tesseract library via vcpkg
-```
+### 1) Startup Flow
 
----
+1. main.cpp creates QGuiApplication and QQmlApplicationEngine.
+2. VideoProcessor type is registered for QML.
+3. Main QML window loads.
+4. VideoProcessor constructor initializes Tesseract and locates eng.traineddata.
+5. QML binds camera input/output sinks and default color mode.
 
-## Function Execution Order (videoprocessor.cpp)
+### 2) Live Preview Flow
 
-This is the exact order code runs — the key thing to explain in an interview.
+1. Camera emits a new frame.
+2. VideoProcessor::handleFrame stores the latest frame.
+3. A background task converts frame data to OpenCV format.
+4. buildMonochromePreview applies selected color mapping.
+5. Processed frame is converted back to Qt video format.
+6. Frame is pushed to output sink and displayed in UI.
 
-### At App Startup (runs once)
-```
-main()
-  +- VideoProcessor()            [FUNCTION 1] Constructor
-       +- findTessdataDirectory() [FUNCTION 4] Locates eng.traineddata
-  +- setVideoSink()              [FUNCTION 3] Connects camera ? handleFrame()
-  +- setOutputSink()             [FUNCTION 5] Connects processor ? display
-  +- setColorMode(0)             [FUNCTION 6] Sets default color (Colors_first)
-```
+### 3) Capture + OCR Flow
 
-### Every Frame — 30+ times/sec (live preview)
-```
-Camera sends frame
-  +- handleFrame()               [FUNCTION 7] Receives every camera frame
-       +- buildMonochromePreview() [HELPER 1] Applies selected color mapping
-            ? sends processed frame to display (VideoOutput in QML)
-```
+1. User presses F4 or clicks Capture.
+2. VideoProcessor::captureAndOCR checks if OCR is already running.
+3. Latest valid frame is copied safely.
+4. Frame is converted to OpenCV BGR.
+5. Screenshot is saved to screenshots directory.
+6. Center ROI is extracted.
+7. ROI is preprocessed for OCR.
+8. runTesseractOcr sends image data to Tesseract.
+9. Result text is emitted via signal.
+10. ResultDialog displays OCR output.
 
-### When User Presses F4 (OCR capture)
-```
-F4 key / Capture button
-  +- captureAndOCR()             [FUNCTION 8] Main OCR entry point
-       +- convertQImageToBgrMat()  [HELPER 2] Qt image ? OpenCV BGR format
-       +- buildMonochromePreview() [HELPER 1] Apply color for screenshot
-       +- cv::imwrite()            Save screenshot to disk
-       +- Extract center ROI (65% width × 50% height)
-       +- cv::adaptiveThreshold()  Convert to binary black/white
-       +- runTesseractOcr()        [FUNCTION 9] Get text from Tesseract
-            ? emit ocrResultReady() ? ResultDialog opens in QML
-```
+## Core C++ Functions
 
-### At App Close (runs once)
-```
-~VideoProcessor()                [FUNCTION 2] Destructor: shuts down Tesseract
-```
+- VideoProcessor::VideoProcessor
+  - Initializes OCR engine and startup state.
 
----
+- VideoProcessor::~VideoProcessor
+  - Releases Tesseract resources.
 
-## Function Summary
+- VideoProcessor::setVideoSink
+  - Connects camera frame signal to frame handler.
 
-### Static Helpers (pure image processing, no class state)
+- VideoProcessor::setOutputSink
+  - Sets processed frame output target.
 
-**`buildMonochromePreview(input, colorMode)`** — HELPER 1  
-Takes a BGR camera frame, returns it recolored with the selected color pair.  
-Steps: BGR ? grayscale ? bilateral filter ? normalize ? map to color pair ? merge.  
-Called by: `handleFrame()` and `captureAndOCR()`.
+- VideoProcessor::setColorMode
+  - Updates active monochrome mode.
 
-**`convertQImageToBgrMat(image)`** — HELPER 2  
-Converts a Qt `QImage` to an OpenCV `cv::Mat` in BGR format.  
-Steps: ensure RGB888 ? wrap in Mat ? convert RGB?BGR ? clone.  
-Called by: `captureAndOCR()`.
+- VideoProcessor::handleFrame
+  - Processes each live frame for preview.
 
-### Class Methods (in execution order)
+- VideoProcessor::captureAndOCR
+  - Executes full capture, preprocessing, OCR, and result emission.
 
-**`VideoProcessor()` [FUNCTION 1]** — Constructor  
-Runs once at startup. Creates Tesseract API, finds `eng.traineddata`, calls `Init()`.  
-Sets `m_isTesseractReady = true` on success, stores error in `m_lastError` on failure.
+- VideoProcessor::runTesseractOcr
+  - Runs OCR on prepared image and returns recognized text.
 
-**`~VideoProcessor()` [FUNCTION 2]** — Destructor  
-Runs once at close. Calls `m_tessApi->End()` then deletes the pointer.
+- VideoProcessor::findTessdataDirectory
+  - Locates eng.traineddata from known paths.
 
-**`setVideoSink()` [FUNCTION 3]**  
-Called by QML to connect the camera. Hooks `videoFrameChanged` ? `handleFrame()` slot.  
-This is what makes `handleFrame()` fire automatically for every camera frame.
+- buildMonochromePreview (static helper)
+  - Applies grayscale-to-color mapping.
 
-**`findTessdataDirectory()` [FUNCTION 4]**  
-Searches for `eng.traineddata` in: `TESSDATA_PREFIX` env var ? app dir ? parent dir ? CMake path.  
-Returns directory path, or empty string if not found.
+- convertQImageToBgrMat (static helper)
+  - Converts QImage to OpenCV BGR matrix.
 
-**`setOutputSink()` [FUNCTION 5]**  
-Called by QML to connect the display. Processed frames are pushed to `m_outputSink`.
+## Build and Run
 
-**`setColorMode()` [FUNCTION 6]**  
-Called by QML when user picks a color. Stores mode 0–3 in `m_colorMode`.
+### Configure
 
-**`handleFrame()` [FUNCTION 7]**  
-Fires 30+ times/sec from camera signal. Converts frame ? BGR ? applies monochrome ? RGBA ? display.  
-Runs in background thread (QtConcurrent) so it never blocks the UI.
-
-**`captureAndOCR()` [FUNCTION 8]**  
-Called on F4. Grabs frame ? converts format ? saves screenshot ? crops center ROI ? adaptive threshold ? calls Tesseract ? emits result signal to QML.
-
-**`runTesseractOcr()` [FUNCTION 9]**  
-Locks mutex (Tesseract is not thread-safe) ? sets PSM_AUTO ? passes image data ? returns recognized text string.
-
----
-
-## QML Files Summary
-
-**`Main.qml`** — Main Window  
-Camera pipeline: `MediaDevices` ? `CaptureSession` + `Camera` ? `VideoSink inputSink` ? `VideoProcessor` ? `VideoOutput`.  
-Buttons: "Select Colors" opens `ColorDialog`. F4 / "Capture" calls `processor.captureAndOCR()`. `onOcrResultReady` signal opens `ResultDialog`.
-
-**`ColorDialog.qml`** — Color Selection  
-`Repeater` generates 4 clickable color options with gradient preview. Click ? `modeSelected(mode)` signal ? `processor.colorMode` updates ? preview changes next frame.
-
-**`ResultDialog.qml`** — OCR Result  
-Scrollable read-only `TextArea` showing recognized text + metadata. Opens automatically when `ocrResultReady` signal fires.
-
----
-
-## How to Explain in an Interview
-
-**Big Picture (30 sec):**
-> "This app opens the webcam, applies one of four monochrome color styles to the live preview, and when you press F4 it captures the frame, runs Tesseract OCR on the center region, and shows the recognized text in a dialog."
-
-**Architecture (60 sec):**
-> "The UI is in QML — three files: main window, color dialog, result dialog. All processing is in C++ inside `VideoProcessor`. Qt connects them via signals and Q_PROPERTY bindings. `handleFrame()` runs in a QtConcurrent background thread 30 times/sec so the UI stays responsive."
-
-**Live Preview Flow (30 sec):**
-> "Every camera frame triggers `handleFrame()`. It converts the frame to OpenCV, applies `buildMonochromePreview()` which maps each pixel luminosity to the selected color pair, converts back to RGBA, and pushes it to `VideoOutput`."
-
-**F4 Capture Flow (60 sec):**
-> "F4 calls `captureAndOCR()`. It grabs the stored frame, converts to OpenCV BGR via `convertQImageToBgrMat()`, saves a color screenshot, crops the center 65×50% region, runs adaptive thresholding to get a clean binary image, passes that to `runTesseractOcr()` which calls Tesseract, then emits `ocrResultReady` back to QML which opens the result dialog."
-
----
-
-## Build Instructions
-
-```bash
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
-```
 
-Requires: Qt 6.5.3 at `C:/Qt/6.5.3/msvc2019_64`, OpenCV in `dependencies/opencv/build`, Tesseract via vcpkg in `dependencies/vcpkg/installed/x64-windows`.
+### Build
+
+cmake --build build --config Release
+
+### Run
+
+Run the generated executable from the build output directory.
+
+## Notes
+
+- OCR requires eng.traineddata to be present.
+- Tesseract access is mutex-protected because the API is not thread-safe.
+- Frame processing and OCR run in background tasks to keep the UI responsive.
