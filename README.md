@@ -4,6 +4,9 @@ OCR-Video-StreamApp is a real-time camera text recognition application built wit
 
 The app opens your camera, shows a live monochrome preview using one of four color styles, and runs OCR on the current frame when you press F4 or click Capture.
 
+<img width="1327" height="1015" alt="Menu" src="https://github.com/user-attachments/assets/4b5fe815-cdc9-4dab-b764-044f56e821be" />
+<img width="1297" height="1008" alt="Capture" src="https://github.com/user-attachments/assets/1708086d-7706-407b-83ca-bdd484bfa0dd" />
+
 ## What the Application Does
 
 1. Starts the default camera.
@@ -125,6 +128,10 @@ cmake --build build --config Release
 Run the generated executable from the build output directory.
 
 ## Notes
+<img width="1280" height="720" alt="OCR_Capture_20260510_012155_311" src="https://github.com/user-attachments/assets/39a0fa01-22d8-4ba1-a8c9-f077327107a7" />
+<img width="1280" height="720" alt="OCR_Capture_20260510_012147_717" src="https://github.com/user-attachments/assets/6fae201f-8cb6-4e25-a646-4d7ad03d0bdf" />
+<img width="1280" height="720" alt="OCR_Capture_20260510_012141_296" src="https://github.com/user-attachments/assets/dc3a2cc0-8dd8-4ad9-94ee-ea8014fce217" />
+<img width="1280" height="720" alt="OCR_Capture_20260510_012134_152" src="https://github.com/user-attachments/assets/a7e3844e-fc60-4f30-b35c-640bd84c4b61" />
 
 - OCR requires eng.traineddata to be present.
 - Tesseract access is mutex-protected because the API is not thread-safe.
