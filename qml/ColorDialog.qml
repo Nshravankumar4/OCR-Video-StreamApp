@@ -2,79 +2,73 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+// Dialog for selecting 1 of 4 monochrome color sets
 Dialog {
     id: root
-    title: "Select Color Set"
+    title: "Select Monochrome Color Set"
     anchors.centerIn: parent
     modal: true
-    width: 400
-    height: 450
+    width: 470
+    height: 360
 
+    // Emitted when color selected, passes mode (0-3)
     signal modeSelected(int mode)
 
     background: Rectangle {
-        color: "#1e1e1e"
-        radius: 10
-        border.color: "#333333"
-    }
-
-    header: Rectangle {
-        height: 50
-        color: "#252525"
-        radius: 10
-        Text {
-            anchors.centerIn: parent
-            text: "Monochrome Color Sets"
-            color: "white"
-            font.bold: true
-        }
+        color: "#f7f7f7"
+        radius: 8
+        border.color: "#c2c2c2"
     }
 
     contentItem: ColumnLayout {
-        spacing: 15
+        spacing: 18
         anchors.margins: 20
 
+        Text {
+            text: "Choose Color Mapping:"
+            color: "#1f1f1f"
+            font.pixelSize: 24
+            font.bold: true
+            Layout.bottomMargin: 10
+        }
+
+        // Generate 4 color option buttons
         Repeater {
             model: [
-                { name: "Colors_first", bg: "#ffffff", fg: "#000000" },
-                { name: "Colors_Second", bg: "#000000", fg: "#ffffff" },
-                { name: "Colors_Third", bg: "#000000", fg: "#11c70e" },
-                { name: "Colors_Fourth", bg: "#000000", fg: "#f4d81e" }
+                { name: "Colors First", mode: 0, bg: "#ffffff", fg: "#000000" },
+                { name: "Colors Second", mode: 1, bg: "#000000", fg: "#ffffff" },
+                { name: "Colors Third", mode: 2, bg: "#000000", fg: "#11c70e" },
+                { name: "Colors Fourth", mode: 3, bg: "#000000", fg: "#f4d81e" }
             ]
 
-            delegate: ItemDelegate {
+            // One clickable color option
+            delegate: Rectangle {
                 Layout.fillWidth: true
-                height: 60
-                onClicked: {
-                    root.modeSelected(index)
-                    root.close()
+                height: 28
+
+                border.color: "#8f8f8f"
+                border.width: 1
+
+                // Gradient preview of the color set
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: modelData.bg }
+                    GradientStop { position: 0.5; color: Qt.darker(modelData.bg, 1.25) }
+                    GradientStop { position: 1.0; color: modelData.fg }
                 }
 
-                background: Rectangle {
-                    color: parent.hovered ? "#333333" : "#252525"
-                    radius: 5
-                    border.color: parent.down ? "#11c70e" : "transparent"
+                Text {
+                    anchors.centerIn: parent
+                    text: modelData.name
+                    color: modelData.mode === 0 ? "#111111" : modelData.fg
+                    font.pixelSize: 18
+                    font.bold: true
                 }
 
-                contentItem: RowLayout {
-                    spacing: 20
-                    Rectangle {
-                        width: 40
-                        height: 40
-                        color: modelData.bg
-                        border.color: "#444444"
-                        radius: 20
-                        Text {
-                            anchors.centerIn: parent
-                            text: "A"
-                            color: modelData.fg
-                            font.bold: true
-                        }
-                    }
-                    Text {
-                        text: modelData.name
-                        color: "white"
-                        font.pixelSize: 16
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        root.modeSelected(modelData.mode)  // Emit signal
+                        root.close()  // Close dialog
                     }
                 }
             }
